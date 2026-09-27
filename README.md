@@ -29,6 +29,12 @@ El acceso pasa por **Server Actions** con la `service_role` (solo servidor, la k
 - Cada usuario tiene un perfil en `devx_profiles`; sus posts, respuestas y mensajes quedan firmados con su id.
 - Sin sesión la app es de solo lectura (al publicar/reaccionar se abre el login).
 
+## Funciones
+
+- **Editar perfil** (nombre, bio, web, GitHub, ubicación, tecnologías) desde tu perfil.
+- **Eliminar** publicaciones y comentarios propios.
+- Likes, reposts, guardados, follows, comunidades y respuestas en tiempo real.
+
 ## Tiempo real
 
 - Los cambios se propagan con Supabase Realtime (`postgres_changes`).
@@ -44,11 +50,16 @@ npm run dev
 
 ## Despliegue
 
-```bash
-vercel --prod
-```
+- **Auto-deploy por Git**: el proyecto está conectado a Vercel con el repo `GonzalitoDev/devx`. Cada push a `main` despliega producción automáticamente.
+- Manual: `vercel --prod`.
 
 La app está desplegada en: https://devx-sandy.vercel.app
+
+## Seguridad
+
+- La `SUPABASE_SERVICE_ROLE_KEY` vive solo en `.env.local` (gitignoreado) y en las env vars de Vercel como Secret. **Nunca se sube al repo ni al bundle del navegador** (se verificó que no aparece en `.next/static`).
+- `lib/supabase.ts`, `lib/auth.ts` y `lib/db.ts` usan el guard `server-only`: es imposible importarlos desde un componente de cliente (error de build).
+- `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` fija los IDs de Server Actions entre builds (evita errores por bundle viejo).
 
 ## Notas
 
