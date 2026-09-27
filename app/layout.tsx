@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProvider } from "@/lib/store";
 import { AppShell } from "@/components/app-shell";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
         <AppProvider>
           <AppShell>{children}</AppShell>
         </AppProvider>
+        <PwaRegister />
       </body>
     </html>
   );
