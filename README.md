@@ -26,6 +26,7 @@ El acceso pasa por **Server Actions** con la `service_role` (solo servidor, la k
 ## Autenticación
 
 - Login/registro con **Supabase Auth** (email + contraseña), todo desde el servidor: las credenciales nunca van al navegador, la sesión vive en cookies `httpOnly`.
+- **Sesión de larga duración**: el refresh token dura 10 años y se renueva solo. El usuario no vuelve a iniciar sesión aunque el access token expire (se restaura automáticamente con el refresh token).
 - Cada usuario tiene un perfil en `devx_profiles`; sus posts, respuestas y mensajes quedan firmados con su id.
 - Sin sesión la app es de solo lectura (al publicar/reaccionar se abre el login).
 

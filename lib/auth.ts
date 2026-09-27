@@ -7,7 +7,8 @@ import type { User } from "./types";
 const ACCESS_COOKIE = "devx-access-token";
 const REFRESH_COOKIE = "devx-refresh-token";
 const WEEK = 60 * 60 * 24 * 7;
-const MONTH = 60 * 60 * 24 * 30;
+// Sesión de larga duración: el refresh token vive 10 años y se renueva solo.
+const REFRESH_MAX_AGE = 60 * 60 * 24 * 365 * 10;
 
 function cookieOptions(maxAge: number) {
   return {
@@ -25,29 +26,42 @@ export async function getSessionUser(): Promise<User | null> {
   if (!admin) return null;
   const store = await cookies();
   const access = store.get(ACCESS_COOKIE)?.value;
-  if (!access) return null;
+  const refresh = store.get(REFRESH_COOKIE)?.value;
+  if (!access && !refresh) return null;
 
-  let token = access;
-  let { data, error } = await admin.auth.getUser(token);
+  let token = access ?? "";
+  let userData: Awaited<ReturnType<typeof admin.auth.getUser>>["data"] | null =
+    null;
+  let userError: Error | null = null;
 
-  if (error) {
-    const refresh = store.get(REFRESH_COOKIE)?.value;
-    if (!refresh) return null;
+  if (access) {
+    const res = await admin.auth.getUser(access);
+    userData = res.data;
+    userError = res.error;
+  }
+
+  // Si el access token falta o expiró, la sesión se restaura con el
+  // refresh token (de larga duración). Así el usuario no vuelve a loguearse.
+  if ((!token || userError) && refresh) {
     const { data: refreshed, error: refreshError } =
       await admin.auth.refreshSession({ refresh_token: refresh });
     if (refreshError || !refreshed.session) return null;
     token = refreshed.session.access_token;
     store.set(ACCESS_COOKIE, token, cookieOptions(WEEK));
-    store.set(REFRESH_COOKIE, refreshed.session.refresh_token, cookieOptions(MONTH));
+    store.set(
+      REFRESH_COOKIE,
+      refreshed.session.refresh_token,
+      cookieOptions(REFRESH_MAX_AGE),
+    );
     const again = await admin.auth.getUser(token);
-    data = again.data;
-    error = again.error;
+    userData = again.data;
+    userError = again.error;
   }
 
-  if (error || !data.user) return null;
+  if (userError || !userData?.user) return null;
 
   try {
-    return await getProfileByUserId(data.user.id);
+    return await getProfileByUserId(userData.user.id);
   } catch {
     return null;
   }
@@ -72,7 +86,11 @@ export async function signIn(email: string, password: string): Promise<string | 
 
   const store = await cookies();
   store.set(ACCESS_COOKIE, data.session.access_token, cookieOptions(WEEK));
-  store.set(REFRESH_COOKIE, data.session.refresh_token, cookieOptions(MONTH));
+  store.set(
+    REFRESH_COOKIE,
+    data.session.refresh_token,
+    cookieOptions(REFRESH_MAX_AGE),
+  );
   return null;
 }
 
