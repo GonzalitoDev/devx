@@ -31,9 +31,18 @@ El acceso pasa por **Server Actions** con la `service_role` (solo servidor, la k
 
 ## Funciones
 
+- **Mensajes directos** entre usuarios reales (botón "Mensaje" en los perfiles).
 - **Editar perfil** (nombre, bio, web, GitHub, ubicación, tecnologías) desde tu perfil.
-- **Eliminar** publicaciones y comentarios propios.
-- Likes, reposts, guardados, follows, comunidades y respuestas en tiempo real.
+- **Editar y eliminar** publicaciones y comentarios propios.
+- **Follows sincronizados** entre dispositivos (`devx_follows`) y **notificaciones automáticas** cuando alguien reacciona o comenta tu contenido.
+- Likes, reposts, guardados, comunidades y respuestas en tiempo real.
+
+### Migración 0003 (opcional)
+
+Las tablas `devx_follows` y la columna `for_user_id` de notificaciones viven en
+`supabase/migrations/0003_devx_follows.sql`. Sin ellas la app funciona igual
+(follows en `localStorage`, sin notificaciones automáticas); al ejecutarlas se
+activan los follows persistentes y las notificaciones por usuario.
 
 ## Tiempo real
 

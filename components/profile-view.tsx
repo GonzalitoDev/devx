@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/lib/store";
 import { projects } from "@/lib/data";
@@ -31,6 +32,7 @@ const TABS: { id: ProfileTab; label: string }[] = [
 ];
 
 export function ProfileView({ user }: { user: User }) {
+  const router = useRouter();
   const {
     currentUser,
     posts,
@@ -39,6 +41,7 @@ export function ProfileView({ user }: { user: User }) {
     following,
     toggleFollow,
     openEditProfile,
+    openConversation,
   } = useApp();
   const [tab, setTab] = useState<ProfileTab>("posts");
 
@@ -105,16 +108,27 @@ export function ProfileView({ user }: { user: User }) {
               Editar perfil
             </button>
           ) : (
-            <button
-              onClick={() => toggleFollow(user.username)}
-              className={`mt-4 rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
-                isFollowing
-                  ? "border border-zinc-700 text-zinc-100 hover:border-red-500/50 hover:text-red-400"
-                  : "bg-zinc-100 text-zinc-900 hover:bg-white"
-              }`}
-            >
-              {isFollowing ? "Siguiendo" : "Seguir"}
-            </button>
+            <span className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  openConversation(user.id);
+                  router.push("/messages");
+                }}
+                className="rounded-full border border-zinc-700 px-5 py-2 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-900"
+              >
+                Mensaje
+              </button>
+              <button
+                onClick={() => toggleFollow(user.username)}
+                className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
+                  isFollowing
+                    ? "border border-zinc-700 text-zinc-100 hover:border-red-500/50 hover:text-red-400"
+                    : "bg-zinc-100 text-zinc-900 hover:bg-white"
+                }`}
+              >
+                {isFollowing ? "Siguiendo" : "Seguir"}
+              </button>
+            </span>
           )}
         </div>
 

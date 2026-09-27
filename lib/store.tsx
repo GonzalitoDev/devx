@@ -44,13 +44,16 @@ import {
   createPostAction,
   deleteCommentAction,
   deletePostAction,
+  getFollowsAction,
   getInitialData,
   getSession,
   markAllNotificationsReadAction,
   sendMessageAction,
+  setFollowAction,
   signInAction,
   signOutAction,
   signUpAction,
+  updatePostAction,
   updatePostInteractionAction,
   updateProfileAction,
 } from "@/app/actions";
@@ -76,6 +79,9 @@ interface AppState {
   composerOpen: boolean;
   loginOpen: boolean;
   editProfileOpen: boolean;
+  editPostOpen: boolean;
+  editingPost: Post | null;
+  messagesTarget: string | null;
 }
 
 export interface SignUpInput {
@@ -107,6 +113,10 @@ interface AppContextValue extends AppState {
   sendMessage: (conversationId: string, text: string) => void;
   trackView: (id: string) => void;
   deleteComment: (postId: string, commentId: string) => void;
+  updatePost: (id: string, input: CreatePostInput) => void;
+  openEditPost: (id: string) => void;
+  closeEditPost: () => void;
+  openConversation: (userId: string) => void;
   updateProfile: (input: {
     name: string;
     bio: string;
@@ -153,6 +163,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     composerOpen: false,
     loginOpen: false,
     editProfileOpen: false,
+    editPostOpen: false,
+    editingPost: null,
+    messagesTarget: null,
   });
 
   const applyRealtime = useCallback((payload: RealtimePayload) => {
@@ -248,6 +261,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const notification = toNotification(
             payload.new as unknown as NotificationRow,
           );
+          const mine =
+            notification.forUserId === undefined ||
+            notification.forUserId === null ||
+            notification.forUserId === s.currentUser?.id;
+          if (!mine) return s;
           if (s.notifications.some((n) => n.id === notification.id)) return s;
           return { ...s, notifications: [notification, ...s.notifications] };
         }
@@ -325,6 +343,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })(),
       ]);
 
+      let dbFollows: string[] | null = null;
+      if (sessionUser) {
+        dbFollows = await getFollowsAction().catch(() => null);
+      }
+
       if (cancelled) return;
 
       setState((s) => ({
@@ -332,9 +355,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         posts: data?.posts ?? s.posts,
         comments: data?.comments ?? s.comments,
         messages: data?.messages ?? s.messages,
-        notifications: data?.notifications ?? s.notifications,
+        notifications: (data?.notifications ?? s.notifications).filter(
+          (n) =>
+            n.forUserId === undefined ||
+            n.forUserId === null ||
+            n.forUserId === sessionUser?.id,
+        ),
         users: data?.users ?? s.users,
         currentUser: sessionUser,
+        following: dbFollows
+          ? Array.from(new Set([...s.following, ...dbFollows]))
+          : s.following,
         online: data !== null,
         ready: true,
       }));
@@ -602,14 +633,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (username: string) => {
       const user = state.users.find((u) => u.username === username);
       if (!user) return;
+      const willFollow = !state.following.includes(user.id);
       setState((s) => ({
         ...s,
-        following: s.following.includes(user.id)
-          ? s.following.filter((u) => u !== user.id)
-          : [...s.following, user.id],
+        following: willFollow
+          ? [...s.following, user.id]
+          : s.following.filter((u) => u !== user.id),
       }));
+      void setFollowAction(username, willFollow).catch(() => {});
     },
-    [state.users],
+    [state.users, state.following],
   );
 
   const toggleJoinCommunity = useCallback((slug: string) => {
@@ -674,6 +707,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.currentUser],
   );
 
+  const openEditPost = useCallback((id: string) => {
+    setState((s) => ({
+      ...s,
+      editPostOpen: true,
+      editingPost: s.posts.find((p) => p.id === id) ?? null,
+    }));
+  }, []);
+
+  const closeEditPost = useCallback(() => {
+    setState((s) => ({ ...s, editPostOpen: false, editingPost: null }));
+  }, []);
+
+  const updatePost = useCallback(
+    (id: string, input: CreatePostInput) => {
+      if (!state.currentUser) {
+        setState((s) => ({ ...s, loginOpen: true }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        editPostOpen: false,
+        editingPost: null,
+        posts: s.posts.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                content: input.content,
+                code: input.code,
+                image: input.image,
+                hashtags: extractHashtags(input.content),
+              }
+            : p,
+        ),
+      }));
+      void updatePostAction(id, input).catch(() => {});
+    },
+    [state.currentUser],
+  );
+
+  const openConversation = useCallback((userId: string) => {
+    setState((s) => ({ ...s, messagesTarget: userId }));
+  }, []);
+
   const updateProfile = useCallback(
     async (input: {
       name: string;
@@ -737,6 +813,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sendMessage,
       trackView,
       deleteComment,
+      updatePost,
+      openEditPost,
+      closeEditPost,
+      openConversation,
       updateProfile,
       signIn,
       signUp,
@@ -766,6 +846,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sendMessage,
       trackView,
       deleteComment,
+      updatePost,
+      openEditPost,
+      closeEditPost,
+      openConversation,
       updateProfile,
       signIn,
       signUp,

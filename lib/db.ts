@@ -1,5 +1,5 @@
 import "server-only";
-import type { Comment, CreatePostInput, InitialData, Message, Post, User } from "./types";
+import type { Comment, CreatePostInput, InitialData, Message, Notification, Post, User } from "./types";
 import { getAdmin } from "./supabase";
 import {
   comments as mockComments,
@@ -280,4 +280,142 @@ export async function deleteComment(id: string, actorId: string): Promise<void> 
     .from("devx_posts")
     .update({ replies: Math.max(0, (post?.replies ?? 0) - 1) })
     .eq("id", postId);
+}
+
+export async function updatePost(
+  id: string,
+  actorId: string,
+  input: CreatePostInput,
+): Promise<Post> {
+  const admin = ensureAdmin();
+  const { data: existing } = await admin
+    .from("devx_posts")
+    .select("author_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Publicación no encontrada");
+  if ((existing as { author_id: string }).author_id !== actorId) {
+    throw new Error("No autorizado");
+  }
+  const { data, error } = await admin
+    .from("devx_posts")
+    .update({
+      content: input.content,
+      code: input.code ?? null,
+      image: input.image ?? null,
+      hashtags: extractHashtags(input.content),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return toPost(data as Parameters<typeof toPost>[0]);
+}
+
+export async function setFollow(
+  actorId: string,
+  username: string,
+  following: boolean,
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    const { data: profile } = await admin
+      .from("devx_profiles")
+      .select("id")
+      .eq("username", username)
+      .maybeSingle();
+    if (!profile) return;
+    const targetId = (profile as { id: string }).id;
+
+    if (following) {
+      await admin
+        .from("devx_follows")
+        .upsert(
+          { follower_id: actorId, followee_id: targetId },
+          { onConflict: "follower_id, followee_id", ignoreDuplicates: true },
+        );
+      if (targetId !== actorId) {
+        await createNotification({
+          id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "follow",
+          fromUserId: actorId,
+          text: "empezó a seguirte",
+          read: false,
+          forUserId: targetId,
+        });
+      }
+    } else {
+      await admin
+        .from("devx_follows")
+        .delete()
+        .eq("follower_id", actorId)
+        .eq("followee_id", targetId);
+    }
+  } catch {
+    // tabla devx_follows aún no existe: el follow queda en localStorage
+  }
+}
+
+export async function getFollowingIds(userId: string): Promise<string[] | null> {
+  const admin = ensureAdmin();
+  try {
+    const { data } = await admin
+      .from("devx_follows")
+      .select("followee_id")
+      .eq("follower_id", userId);
+    return (data ?? []).map((r) => (r as { followee_id: string }).followee_id);
+  } catch {
+    return null; // tabla no disponible: el cliente decide usar localStorage
+  }
+}
+
+export async function notifyOnReaction(
+  type: "like" | "repost" | "comment",
+  postId: string,
+  actorId: string,
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    const { data: post } = await admin
+      .from("devx_posts")
+      .select("author_id")
+      .eq("id", postId)
+      .maybeSingle();
+    if (!post) return;
+    const authorId = (post as { author_id: string }).author_id;
+    if (authorId === actorId) return;
+    const text =
+      type === "like"
+        ? "le gustó tu publicación"
+        : type === "repost"
+          ? "reposteó tu publicación"
+          : "comentó tu publicación";
+    await createNotification({
+      id: `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type,
+      fromUserId: actorId,
+      postId,
+      text,
+      read: false,
+      forUserId: authorId,
+    });
+  } catch {
+    // la columna for_user_id aún no existe: no romper la acción
+  }
+}
+
+async function createNotification(
+  notification: Omit<Notification, "createdAt"> & { createdAt?: string },
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    await admin.from("devx_notifications").insert(
+      toNotificationRow({
+        ...notification,
+        createdAt: notification.createdAt ?? new Date().toISOString(),
+      }),
+    );
+  } catch {
+    // tabla no configurada: best effort
+  }
 }

@@ -14,6 +14,7 @@ import {
   BookmarkIcon,
   HeartIcon,
   MessageIcon,
+  PenIcon,
   RepeatIcon,
   SendIcon,
   TrashIcon,
@@ -44,6 +45,7 @@ export function PostCard({ post }: { post: Post }) {
     toggleBookmark,
     deletePost,
     addComment,
+    openEditPost,
     openLogin,
   } = useApp();
 
@@ -117,13 +119,22 @@ export function PostCard({ post }: { post: Post }) {
                 </Link>
               ) : null}
               {isOwn ? (
-                <button
-                  onClick={() => deletePost(post.id)}
-                  className="rounded-full p-1 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                  aria-label="Eliminar publicación"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
+                <span className="flex items-center gap-0.5">
+                  <button
+                    onClick={() => openEditPost(post.id)}
+                    className="rounded-full p-1 text-zinc-600 transition-colors hover:bg-sky-500/10 hover:text-sky-400"
+                    aria-label="Editar publicación"
+                  >
+                    <PenIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => deletePost(post.id)}
+                    className="rounded-full p-1 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                    aria-label="Eliminar publicación"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </span>
               ) : null}
             </span>
           </div>

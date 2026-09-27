@@ -51,6 +51,7 @@ export interface NotificationRow {
   text: string;
   created_at: string;
   read: boolean;
+  for_user_id?: string | null;
 }
 
 export interface ProfileRow {
@@ -155,6 +156,7 @@ export function toNotification(row: NotificationRow): Notification {
     text: row.text,
     createdAt: row.created_at,
     read: row.read,
+    forUserId: row.for_user_id ?? undefined,
   };
 }
 
@@ -206,6 +208,7 @@ export function toNotificationRow(notification: Notification): NotificationRow {
     text: notification.text,
     created_at: notification.createdAt,
     read: notification.read,
+    for_user_id: notification.forUserId ?? null,
   };
 }
 

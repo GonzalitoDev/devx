@@ -7,8 +7,12 @@ import {
   deleteComment,
   deletePost,
   fetchInitialData,
+  getFollowingIds,
   markAllNotificationsRead,
+  notifyOnReaction,
   sendMessage,
+  setFollow,
+  updatePost,
   updatePostCounter,
   updateProfile,
   type CounterField,
@@ -66,11 +70,33 @@ export async function addCommentAction(
 ): Promise<void> {
   const authorId = await requireUserId();
   await createComment(postId, content, authorId, id);
+  await notifyOnReaction("comment", postId, authorId);
 }
 
 export async function deleteCommentAction(id: string): Promise<void> {
   const actorId = await requireUserId();
   await deleteComment(id, actorId);
+}
+
+export async function updatePostAction(
+  id: string,
+  input: CreatePostInput,
+): Promise<void> {
+  const actorId = await requireUserId();
+  await updatePost(id, actorId, input);
+}
+
+export async function getFollowsAction(): Promise<string[] | null> {
+  const userId = await requireUserId();
+  return getFollowingIds(userId);
+}
+
+export async function setFollowAction(
+  username: string,
+  following: boolean,
+): Promise<void> {
+  const actorId = await requireUserId();
+  await setFollow(actorId, username, following);
 }
 
 export async function updateProfileAction(input: {
@@ -99,8 +125,17 @@ export async function updatePostInteractionAction(
   field: CounterField,
   delta: number,
 ): Promise<void> {
-  if (field !== "views") await requireUserId();
+  let userId: string | null = null;
+  if (field !== "views") {
+    userId = await requireUserId();
+  }
   await updatePostCounter(id, field, delta);
+  if (field === "likes" && delta > 0 && userId) {
+    await notifyOnReaction("like", id, userId);
+  }
+  if (field === "reposts" && delta > 0 && userId) {
+    await notifyOnReaction("repost", id, userId);
+  }
 }
 
 export async function markAllNotificationsReadAction(): Promise<void> {

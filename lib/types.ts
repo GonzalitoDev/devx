@@ -82,6 +82,7 @@ export interface Notification {
   text: string;
   createdAt: string;
   read: boolean;
+  forUserId?: string;
 }
 
 export interface Message {

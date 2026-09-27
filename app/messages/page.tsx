@@ -31,14 +31,23 @@ function useActiveConversation(messages: ReturnType<typeof useApp>["messages"]) 
 }
 
 export default function MessagesPage() {
-  const { messages, currentUser, getUser, sendMessage, openLogin } = useApp();
+  const {
+    messages,
+    currentUser,
+    getUser,
+    sendMessage,
+    openLogin,
+    messagesTarget,
+  } = useApp();
   const conversations = useActiveConversation(messages);
 
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(
+    messagesTarget,
+  );
   const [chatOpen, setChatOpen] = useState(false);
   const [text, setText] = useState("");
 
-  const activeUserId = selectedUserId ?? conversations[0]?.userId ?? null;
+  const activeUserId = selectedUserId ?? messagesTarget ?? conversations[0]?.userId ?? null;
 
   const activeUser = activeUserId ? getUser(activeUserId) : undefined;
   const activeMessages = activeUserId
