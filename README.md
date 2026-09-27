@@ -71,6 +71,20 @@ La app está desplegada en: https://devx-sandy.vercel.app
 - `lib/supabase.ts`, `lib/auth.ts` y `lib/db.ts` usan el guard `server-only`: es imposible importarlos desde un componente de cliente (error de build).
 - `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` fija los IDs de Server Actions entre builds (evita errores por bundle viejo).
 
+## APK / Android
+
+La app es una **PWA** (manifest + service worker). Para generar el APK se usa el
+servicio CloudAPK de PWABuilder:
+
+```bash
+node scripts/generate-icons.mjs   # regenera los iconos PWA si hace falta
+# Genera el APK firmado desde la URL:
+#  POST https://pwabuilder-cloudapk.azurewebsites.net/generateAppPackage
+```
+
+El APK firmado y la keystore de firma quedan en `dist/` (excluido de git). La
+keystore es necesaria para publicar futuras actualizaciones en Google Play.
+
 ## Notas
 
 - El usuario actual viene de Supabase Auth (email/password). Los datos de ejemplo se siembran automáticamente la primera vez.

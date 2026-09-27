@@ -45,3 +45,6 @@ next-env.d.ts
 
 # herramientas locales
 .freebuff/
+
+# apk/keystore de firma (no se suben al repo)
+/dist/
