@@ -8,6 +8,7 @@ import {
   BellIcon,
   BookmarkIcon,
   CodeIcon,
+  DownloadIcon,
   ExploreIcon,
   HomeIcon,
   LogOutIcon,
@@ -84,6 +85,15 @@ export function Sidebar() {
           <PenIcon className="h-5 w-5" />
           Publicar
         </button>
+
+        <a
+          href="/DevX.apk"
+          download
+          className="mt-3 flex items-center gap-4 rounded-full px-4 py-2.5 text-lg font-medium text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-100"
+        >
+          <DownloadIcon className="h-6 w-6" />
+          <span className="hidden lg:inline">Descargar APK</span>
+        </a>
       </div>
 
       {currentUser ? (
@@ -160,6 +170,15 @@ export function MobileNav() {
             </Link>
           );
         })}
+        <a
+          href="/DevX.apk"
+          download
+          className="flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] text-zinc-500"
+          aria-label="Descargar APK"
+        >
+          <DownloadIcon className="h-6 w-6" />
+          APK
+        </a>
       </div>
       <button
         onClick={openComposer}
