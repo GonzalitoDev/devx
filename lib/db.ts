@@ -419,3 +419,87 @@ async function createNotification(
     // tabla no configurada: best effort
   }
 }
+
+export async function getUserPostIds(
+  table: "devx_bookmarks" | "devx_post_likes" | "devx_post_reposts",
+  userId: string,
+): Promise<string[] | null> {
+  const admin = ensureAdmin();
+  try {
+    const { data } = await admin
+      .from(table)
+      .select("post_id")
+      .eq("user_id", userId);
+    return (data ?? []).map((r) => (r as { post_id: string }).post_id);
+  } catch {
+    return null; // tabla aún no existe: usar localStorage
+  }
+}
+
+export async function setUserPostRel(
+  table: "devx_bookmarks" | "devx_post_likes" | "devx_post_reposts",
+  userId: string,
+  postId: string,
+  active: boolean,
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    if (active) {
+      await admin
+        .from(table)
+        .upsert(
+          { user_id: userId, post_id: postId },
+          { onConflict: "user_id, post_id", ignoreDuplicates: true },
+        );
+    } else {
+      await admin
+        .from(table)
+        .delete()
+        .eq("user_id", userId)
+        .eq("post_id", postId);
+    }
+  } catch {
+    // tabla aún no existe: la interacción queda en localStorage
+  }
+}
+
+export async function getUserCommunitySlugs(
+  userId: string,
+): Promise<string[] | null> {
+  const admin = ensureAdmin();
+  try {
+    const { data } = await admin
+      .from("devx_community_members")
+      .select("community_slug")
+      .eq("user_id", userId);
+    return (data ?? []).map((r) => (r as { community_slug: string }).community_slug);
+  } catch {
+    return null;
+  }
+}
+
+export async function setCommunityMembership(
+  userId: string,
+  slug: string,
+  active: boolean,
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    if (active) {
+      await admin
+        .from("devx_community_members")
+        .upsert(
+          { user_id: userId, community_slug: slug },
+          { onConflict: "user_id, community_slug", ignoreDuplicates: true },
+        );
+    } else {
+      await admin
+        .from("devx_community_members")
+        .delete()
+        .eq("user_id", userId)
+        .eq("community_slug", slug);
+    }
+  } catch {
+    // tabla aún no existe: la membresía queda en localStorage
+  }
+}

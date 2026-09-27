@@ -73,5 +73,16 @@ La app está desplegada en: https://devx-sandy.vercel.app
 ## Notas
 
 - El usuario actual viene de Supabase Auth (email/password). Los datos de ejemplo se siembran automáticamente la primera vez.
-- Las interacciones por dispositivo (follows, guardados, join) persisten en `localStorage`.
+- **Las interacciones están en la DB por usuario**: follows, guardados, likes, reposts y membresías de comunidades (`devx_follows`, `devx_bookmarks`, `devx_post_likes`, `devx_post_reposts`, `devx_community_members`). Se sincronizan entre dispositivos al iniciar sesión.
+- `localStorage` solo actúa como respaldo/caché si la tabla correspondiente aún no existe o no hay sesión.
 - Si Supabase no responde, la app cae a modo demostración con datos de ejemplo.
+
+### Migraciones
+
+1. `0001_devx_init.sql` — tablas del feed + realtime.
+2. `0002_devx_profiles.sql` — perfiles + autores de ejemplo.
+3. `0003_devx_follows.sql` — follows persistentes + notificaciones por usuario.
+4. `0004_devx_interactions.sql` — guardados, likes, reposts y membresías en la DB.
+
+Cada una es opcional y aditiva: sin ejecutarla, la app funciona igual (la interacción
+queda en `localStorage`); al ejecutarla se activa la sincronización entre dispositivos.

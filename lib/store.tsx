@@ -46,10 +46,15 @@ import {
   deletePostAction,
   getFollowsAction,
   getInitialData,
+  getInteractionsAction,
   getSession,
   markAllNotificationsReadAction,
   sendMessageAction,
+  setBookmarkAction,
+  setCommunityJoinAction,
   setFollowAction,
+  setLikeAction,
+  setRepostAction,
   signInAction,
   signOutAction,
   signUpAction,
@@ -344,8 +349,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ]);
 
       let dbFollows: string[] | null = null;
+      let dbInteractions: Awaited<ReturnType<typeof getInteractionsAction>> = null;
       if (sessionUser) {
-        dbFollows = await getFollowsAction().catch(() => null);
+        [dbFollows, dbInteractions] = await Promise.all([
+          getFollowsAction().catch(() => null),
+          getInteractionsAction().catch(() => null),
+        ]);
       }
 
       if (cancelled) return;
@@ -366,6 +375,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         following: dbFollows
           ? Array.from(new Set([...s.following, ...dbFollows]))
           : s.following,
+        bookmarks: dbInteractions?.bookmarks
+          ? Array.from(new Set([...s.bookmarks, ...dbInteractions.bookmarks]))
+          : s.bookmarks,
+        liked: dbInteractions?.liked
+          ? Array.from(new Set([...s.liked, ...dbInteractions.liked]))
+          : s.liked,
+        reposted: dbInteractions?.reposted
+          ? Array.from(new Set([...s.reposted, ...dbInteractions.reposted]))
+          : s.reposted,
+        joinedCommunities: dbInteractions?.joinedCommunities
+          ? Array.from(
+              new Set([...s.joinedCommunities, ...dbInteractions.joinedCommunities]),
+            )
+          : s.joinedCommunities,
         online: data !== null,
         ready: true,
       }));
@@ -575,18 +598,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const isLiked = state.liked.includes(id);
+      const willLike = !isLiked;
       setState((s) => ({
         ...s,
-        liked: isLiked ? s.liked.filter((x) => x !== id) : [...s.liked, id],
+        liked: willLike ? [...s.liked, id] : s.liked.filter((x) => x !== id),
         posts: s.posts.map((p) =>
           p.id === id
-            ? { ...p, likes: Math.max(0, p.likes + (isLiked ? -1 : 1)) }
+            ? { ...p, likes: Math.max(0, p.likes + (willLike ? 1 : -1)) }
             : p,
         ),
       }));
-      void updatePostInteractionAction(id, "likes", isLiked ? -1 : 1).catch(
+      void updatePostInteractionAction(id, "likes", willLike ? 1 : -1).catch(
         () => {},
       );
+      void setLikeAction(id, willLike).catch(() => {});
     },
     [state.currentUser, state.liked],
   );
@@ -598,20 +623,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const isReposted = state.reposted.includes(id);
+      const willRepost = !isReposted;
       setState((s) => ({
         ...s,
-        reposted: isReposted
-          ? s.reposted.filter((x) => x !== id)
-          : [...s.reposted, id],
+        reposted: willRepost
+          ? [...s.reposted, id]
+          : s.reposted.filter((x) => x !== id),
         posts: s.posts.map((p) =>
           p.id === id
-            ? { ...p, reposts: Math.max(0, p.reposts + (isReposted ? -1 : 1)) }
+            ? {
+                ...p,
+                reposts: Math.max(0, p.reposts + (willRepost ? 1 : -1)),
+              }
             : p,
         ),
       }));
-      void updatePostInteractionAction(id, "reposts", isReposted ? -1 : 1).catch(
+      void updatePostInteractionAction(id, "reposts", willRepost ? 1 : -1).catch(
         () => {},
       );
+      void setRepostAction(id, willRepost).catch(() => {});
     },
     [state.currentUser, state.reposted],
   );
@@ -621,13 +651,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleBookmark = useCallback((id: string) => {
+    const willBookmark = !state.bookmarks.includes(id);
     setState((s) => ({
       ...s,
-      bookmarks: s.bookmarks.includes(id)
-        ? s.bookmarks.filter((b) => b !== id)
-        : [id, ...s.bookmarks],
+      bookmarks: willBookmark
+        ? [id, ...s.bookmarks]
+        : s.bookmarks.filter((b) => b !== id),
     }));
-  }, []);
+    void setBookmarkAction(id, willBookmark).catch(() => {});
+  }, [state.bookmarks]);
 
   const toggleFollow = useCallback(
     (username: string) => {
@@ -646,13 +678,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleJoinCommunity = useCallback((slug: string) => {
+    const willJoin = !state.joinedCommunities.includes(slug);
     setState((s) => ({
       ...s,
-      joinedCommunities: s.joinedCommunities.includes(slug)
-        ? s.joinedCommunities.filter((c) => c !== slug)
-        : [...s.joinedCommunities, slug],
+      joinedCommunities: willJoin
+        ? [...s.joinedCommunities, slug]
+        : s.joinedCommunities.filter((c) => c !== slug),
     }));
-  }, []);
+    void setCommunityJoinAction(slug, willJoin).catch(() => {});
+  }, [state.joinedCommunities]);
 
   const setFeedTab = useCallback((tab: FeedTab) => {
     setState((s) => ({ ...s, feedTab: tab }));
