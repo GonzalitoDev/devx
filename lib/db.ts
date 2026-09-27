@@ -1,3 +1,4 @@
+import "server-only";
 import type { Comment, CreatePostInput, InitialData, Message, Post, User } from "./types";
 import { getAdmin } from "./supabase";
 import {
@@ -224,4 +225,59 @@ export async function createProfile(profile: User): Promise<User> {
   const { data, error } = await admin.from("devx_profiles").upsert(toProfileRow(profile)).select().single();
   if (error) throw error;
   return toUser(data as Parameters<typeof toUser>[0]);
+}
+
+export async function updateProfile(
+  id: string,
+  input: {
+    name: string;
+    bio: string;
+    website?: string;
+    github?: string;
+    location?: string;
+    technologies: string[];
+  },
+): Promise<User> {
+  const admin = ensureAdmin();
+  const { data, error } = await admin
+    .from("devx_profiles")
+    .update({
+      name: input.name.trim() || "Sin nombre",
+      bio: input.bio.trim(),
+      website: input.website?.trim() || null,
+      github: input.github?.trim() || null,
+      location: input.location?.trim() || null,
+      technologies: input.technologies,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return toUser(data as Parameters<typeof toUser>[0]);
+}
+
+export async function deleteComment(id: string, actorId: string): Promise<void> {
+  const admin = ensureAdmin();
+  const { data: comment } = await admin
+    .from("devx_comments")
+    .select("author_id, post_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!comment) return;
+  if ((comment as { author_id: string }).author_id !== actorId) {
+    throw new Error("No autorizado");
+  }
+  const postId = (comment as { post_id: string }).post_id;
+  const { error } = await admin.from("devx_comments").delete().eq("id", id);
+  if (error) throw error;
+
+  const { data: post } = await admin
+    .from("devx_posts")
+    .select("replies")
+    .eq("id", postId)
+    .maybeSingle();
+  await admin
+    .from("devx_posts")
+    .update({ replies: Math.max(0, (post?.replies ?? 0) - 1) })
+    .eq("id", postId);
 }

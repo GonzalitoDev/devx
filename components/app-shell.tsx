@@ -7,10 +7,11 @@ import { Sidebar, MobileNav } from "./sidebar";
 import { RightSidebar } from "./right-sidebar";
 import { ComposerModal } from "./composer-modal";
 import { LoginModal } from "./login-modal";
+import { EditProfileModal } from "./edit-profile-modal";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { ready, online } = useApp();
+  const { ready, online, editProfileOpen } = useApp();
   const hideRight = pathname.startsWith("/messages");
 
   return (
@@ -41,6 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MobileNav />
       <ComposerModal />
       <LoginModal />
+      {editProfileOpen ? <EditProfileModal /> : null}
     </div>
   );
 }

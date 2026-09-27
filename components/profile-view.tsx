@@ -38,6 +38,7 @@ export function ProfileView({ user }: { user: User }) {
     liked,
     following,
     toggleFollow,
+    openEditProfile,
   } = useApp();
   const [tab, setTab] = useState<ProfileTab>("posts");
 
@@ -96,7 +97,14 @@ export function ProfileView({ user }: { user: User }) {
           <div className="-mt-10 rounded-full border-4 border-black">
             <Avatar user={user} size="2xl" />
           </div>
-          {!isOwn ? (
+          {isOwn ? (
+            <button
+              onClick={openEditProfile}
+              className="mt-4 rounded-full border border-zinc-700 px-5 py-2 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-900"
+            >
+              Editar perfil
+            </button>
+          ) : (
             <button
               onClick={() => toggleFollow(user.username)}
               className={`mt-4 rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
@@ -107,7 +115,7 @@ export function ProfileView({ user }: { user: User }) {
             >
               {isFollowing ? "Siguiendo" : "Seguir"}
             </button>
-          ) : null}
+          )}
         </div>
 
         <div className="mt-2">

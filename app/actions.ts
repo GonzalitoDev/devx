@@ -4,11 +4,13 @@ import type { CreatePostInput, InitialData, User } from "@/lib/types";
 import {
   createComment,
   createPost,
+  deleteComment,
   deletePost,
   fetchInitialData,
   markAllNotificationsRead,
   sendMessage,
   updatePostCounter,
+  updateProfile,
   type CounterField,
 } from "@/lib/db";
 import {
@@ -64,6 +66,23 @@ export async function addCommentAction(
 ): Promise<void> {
   const authorId = await requireUserId();
   await createComment(postId, content, authorId, id);
+}
+
+export async function deleteCommentAction(id: string): Promise<void> {
+  const actorId = await requireUserId();
+  await deleteComment(id, actorId);
+}
+
+export async function updateProfileAction(input: {
+  name: string;
+  bio: string;
+  website?: string;
+  github?: string;
+  location?: string;
+  technologies: string[];
+}): Promise<void> {
+  const userId = await requireUserId();
+  await updateProfile(userId, input);
 }
 
 export async function sendMessageAction(

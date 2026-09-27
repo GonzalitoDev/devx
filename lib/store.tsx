@@ -42,6 +42,7 @@ import {
 import {
   addCommentAction,
   createPostAction,
+  deleteCommentAction,
   deletePostAction,
   getInitialData,
   getSession,
@@ -51,6 +52,7 @@ import {
   signOutAction,
   signUpAction,
   updatePostInteractionAction,
+  updateProfileAction,
 } from "@/app/actions";
 
 export type FeedTab = "foryou" | "following";
@@ -73,6 +75,7 @@ interface AppState {
   search: string;
   composerOpen: boolean;
   loginOpen: boolean;
+  editProfileOpen: boolean;
 }
 
 export interface SignUpInput {
@@ -98,9 +101,20 @@ interface AppContextValue extends AppState {
   closeComposer: () => void;
   openLogin: () => void;
   closeLogin: () => void;
+  openEditProfile: () => void;
+  closeEditProfile: () => void;
   markAllNotificationsRead: () => void;
   sendMessage: (conversationId: string, text: string) => void;
   trackView: (id: string) => void;
+  deleteComment: (postId: string, commentId: string) => void;
+  updateProfile: (input: {
+    name: string;
+    bio: string;
+    website?: string;
+    github?: string;
+    location?: string;
+    technologies: string[];
+  }) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (input: SignUpInput) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -138,6 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     search: "",
     composerOpen: false,
     loginOpen: false,
+    editProfileOpen: false,
   });
 
   const applyRealtime = useCallback((payload: RealtimePayload) => {
@@ -180,6 +195,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...s.comments,
             [comment.postId]: [...existing, comment],
           },
+        };
+      }
+
+      if (table === "devx_comments" && type === "DELETE" && payload.old) {
+        const id = (payload.old as { id: string }).id;
+        let foundPostId: string | null = null;
+        for (const [postId, list] of Object.entries(s.comments)) {
+          if (list.some((c) => c.id === id)) {
+            foundPostId = postId;
+            break;
+          }
+        }
+        if (!foundPostId) return s;
+        return {
+          ...s,
+          comments: {
+            ...s.comments,
+            [foundPostId]: s.comments[foundPostId].filter((c) => c.id !== id),
+          },
+          posts: s.posts.map((p) =>
+            p.id === foundPostId
+              ? { ...p, replies: Math.max(0, p.replies - 1) }
+              : p,
+          ),
         };
       }
 
@@ -606,6 +645,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void markAllNotificationsReadAction().catch(() => {});
   }, []);
 
+  const openEditProfile = useCallback(() => {
+    setState((s) => ({ ...s, editProfileOpen: true }));
+  }, []);
+
+  const closeEditProfile = useCallback(() => {
+    setState((s) => ({ ...s, editProfileOpen: false }));
+  }, []);
+
+  const deleteComment = useCallback(
+    (postId: string, commentId: string) => {
+      if (!state.currentUser) {
+        setState((s) => ({ ...s, loginOpen: true }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        comments: {
+          ...s.comments,
+          [postId]: (s.comments[postId] ?? []).filter((c) => c.id !== commentId),
+        },
+        posts: s.posts.map((p) =>
+          p.id === postId ? { ...p, replies: Math.max(0, p.replies - 1) } : p,
+        ),
+      }));
+      void deleteCommentAction(commentId).catch(() => {});
+    },
+    [state.currentUser],
+  );
+
+  const updateProfile = useCallback(
+    async (input: {
+      name: string;
+      bio: string;
+      website?: string;
+      github?: string;
+      location?: string;
+      technologies: string[];
+    }) => {
+      if (!state.currentUser) {
+        setState((s) => ({ ...s, loginOpen: true }));
+        return "Inicia sesión para editar tu perfil.";
+      }
+      try {
+        await updateProfileAction(input);
+        await refreshAuth();
+        setState((s) => ({ ...s, editProfileOpen: false }));
+        return null;
+      } catch {
+        return "No se pudo actualizar el perfil. Intenta de nuevo.";
+      }
+    },
+    [state.currentUser, refreshAuth],
+  );
+
   const resetData = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setState((s) => ({
@@ -638,9 +731,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeComposer,
       openLogin,
       closeLogin,
+      openEditProfile,
+      closeEditProfile,
       markAllNotificationsRead,
       sendMessage,
       trackView,
+      deleteComment,
+      updateProfile,
       signIn,
       signUp,
       signOut,
@@ -663,9 +760,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeComposer,
       openLogin,
       closeLogin,
+      openEditProfile,
+      closeEditProfile,
       markAllNotificationsRead,
       sendMessage,
       trackView,
+      deleteComment,
+      updateProfile,
       signIn,
       signUp,
       signOut,

@@ -35,6 +35,7 @@ export function PostDetail({ postId }: { postId: string }) {
     toggleBookmark,
     deletePost,
     addComment,
+    deleteComment,
     openLogin,
     trackView,
   } = useApp();
@@ -292,6 +293,15 @@ export function PostDetail({ postId }: { postId: string }) {
                     <span className="text-zinc-500">
                       @{commentAuthor.username} · {fullDate(comment.createdAt)}
                     </span>
+                    {comment.authorId === currentUser?.id ? (
+                      <button
+                        onClick={() => deleteComment(post.id, comment.id)}
+                        className="ml-auto rounded-full p-1 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                        aria-label="Eliminar comentario"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    ) : null}
                   </div>
                   <RichText
                     text={comment.content}
