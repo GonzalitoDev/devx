@@ -6,8 +6,12 @@ export const dynamic = "force-dynamic";
 const SUBS = ["ProgrammerHumor", "dankmemes", "me_irl"];
 const TTL = 15 * 60 * 1000; // 15 minutos de caché
 
-let cache: { at: number; memes: ScrapedMeme[]; videos: ScrapedVideo[] } | null =
-  null;
+let cache: {
+  at: number;
+  memes: ScrapedMeme[];
+  clips: ScrapedMeme[];
+  videos: ScrapedVideo[];
+} | null = null;
 
 function dedupe<T extends { id: string }>(list: T[]): T[] {
   const seen = new Set<string>();
@@ -18,9 +22,13 @@ function dedupe<T extends { id: string }>(list: T[]): T[] {
   });
 }
 
-/** Memes reales (con captions) vía meme-api.com, proxy de subreddits. */
-async function scrapeMemesFromMemeApi(): Promise<ScrapedMeme[]> {
+/** Memes e imágenes animadas (GIF) vía meme-api.com, proxy de subreddits. */
+async function scrapeMemesFromMemeApi(): Promise<{
+  memes: ScrapedMeme[];
+  clips: ScrapedMeme[];
+}> {
   const memes: ScrapedMeme[] = [];
+  const clips: ScrapedMeme[] = [];
   for (const sub of SUBS) {
     try {
       const res = await fetch(`https://meme-api.com/gimme/${sub}/20`, {
@@ -30,21 +38,28 @@ async function scrapeMemesFromMemeApi(): Promise<ScrapedMeme[]> {
       const json = await res.json();
       const items = Array.isArray(json?.memes) ? json.memes : [];
       for (const m of items) {
-        if (typeof m?.url === "string") {
-          memes.push({
-            id: m.postLink ?? m.url,
-            title: m.title ?? "Meme",
-            image: m.url,
-            url: m.postLink ?? m.url,
-            source: `r/${m.subreddit ?? sub}`,
-          });
+        if (typeof m?.url !== "string") continue;
+        const entry: ScrapedMeme = {
+          id: m.postLink ?? m.url,
+          title: m.title ?? "Meme",
+          image: m.url,
+          url: m.postLink ?? m.url,
+          source: `r/${m.subreddit ?? sub}`,
+        };
+        if (/\.gif(\?|$)/i.test(m.url)) {
+          clips.push(entry);
+        } else {
+          memes.push(entry);
         }
       }
     } catch {
       // siguiente subreddit
     }
   }
-  return dedupe(memes).slice(0, 30);
+  return {
+    memes: dedupe(memes).slice(0, 30),
+    clips: dedupe(clips).slice(0, 15),
+  };
 }
 
 /** Videos hospedados por Reddit (best-effort; algunos IPs lo bloquean). */
@@ -120,13 +135,16 @@ export async function GET(request: Request) {
   }
 
   let memes: ScrapedMeme[] = [];
+  let clips: ScrapedMeme[] = [];
   let fallback = false;
   try {
-    memes = await scrapeMemesFromMemeApi();
+    const scraped = await scrapeMemesFromMemeApi();
+    memes = scraped.memes;
+    clips = scraped.clips;
   } catch {
-    // sin memes
+    // sin contenido
   }
-  if (memes.length === 0) {
+  if (memes.length === 0 && clips.length === 0) {
     try {
       memes = await scrapeImgflip();
       fallback = true;
@@ -137,9 +155,10 @@ export async function GET(request: Request) {
 
   const videos = await scrapeRedditVideos().catch(() => []);
 
-  cache = { at: Date.now(), memes, videos };
+  cache = { at: Date.now(), memes, clips, videos };
   const response: ScrapedResponse = {
     memes,
+    clips,
     videos,
     fetchedAt: new Date().toISOString(),
     cached: false,

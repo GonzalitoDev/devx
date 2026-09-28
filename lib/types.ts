@@ -148,6 +148,7 @@ export interface ScrapedVideo {
 
 export interface ScrapedResponse {
   memes: ScrapedMeme[];
+  clips: ScrapedMeme[];
   videos: ScrapedVideo[];
   fetchedAt: string;
   cached: boolean;

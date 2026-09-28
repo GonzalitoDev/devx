@@ -34,6 +34,7 @@ export default function MemesPage() {
     } catch {
       setData({
         memes: [],
+        clips: [],
         videos: [],
         fetchedAt: new Date().toISOString(),
         cached: false,
@@ -52,8 +53,12 @@ export default function MemesPage() {
   }, [load]);
 
   const memes = data?.memes ?? [];
-  const videos = data?.videos ?? [];
-  const items = tab === "memes" ? memes : videos;
+  const videoItems = [
+    ...(data?.clips ?? []).map((c) => ({ kind: "clip" as const, ...c })),
+    ...(data?.videos ?? []).map((v) => ({ kind: "video" as const, ...v })),
+  ];
+  const items = tab === "memes" ? memes : videoItems;
+  const videosCount = (data?.clips.length ?? 0) + (data?.videos.length ?? 0);
 
   return (
     <div>
@@ -87,7 +92,9 @@ export default function MemesPage() {
               className="relative flex-1 py-3 text-sm font-semibold transition-colors hover:bg-zinc-950"
             >
               <span className={active ? "text-zinc-100" : "text-zinc-500"}>
-                {t === "memes" ? `Memes (${data?.memes.length ?? 0})` : `Videos (${data?.videos.length ?? 0})`}
+                {t === "memes"
+                  ? `Memes (${data?.memes.length ?? 0})`
+                  : `Videos (${videosCount})`}
               </span>
               {active ? (
                 <span className="absolute bottom-0 left-1/2 h-0.5 w-14 -translate-x-1/2 rounded-full bg-sky-500" />
@@ -154,21 +161,30 @@ export default function MemesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
-          {videos.map((item) => (
+          {videoItems.map((item) => (
             <a
-              key={item.id}
+              key={item.kind + item.id}
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
               className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/60 transition-colors hover:border-zinc-600"
             >
-              <video
-                src={item.videoUrl}
-                poster={item.poster}
-                controls
-                preload="metadata"
-                className="aspect-video w-full bg-black object-contain"
-              />
+              {item.kind === "clip" ? (
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  loading="lazy"
+                  className="aspect-square w-full bg-black object-cover"
+                />
+              ) : (
+                <video
+                  src={item.videoUrl}
+                  poster={item.poster}
+                  controls
+                  preload="metadata"
+                  className="aspect-video w-full bg-black object-contain"
+                />
+              )}
               <div className="p-3">
                 <p className="line-clamp-2 text-sm font-medium text-zinc-100">
                   {item.title}
