@@ -41,12 +41,15 @@ import {
 } from "./mappers";
 import {
   addCommentAction,
+  boostPostAction,
+  claimDailyAction,
   createPostAction,
   deleteCommentAction,
   deletePostAction,
   getFollowsAction,
   getInitialData,
   getInteractionsAction,
+  getProgressAction,
   getSession,
   markAllNotificationsReadAction,
   sendMessageAction,
@@ -62,6 +65,7 @@ import {
   updatePostInteractionAction,
   updateProfileAction,
 } from "@/app/actions";
+import { canUse, type GatedFeature } from "./ranks";
 
 export type FeedTab = "foryou" | "following";
 
@@ -87,6 +91,7 @@ interface AppState {
   editPostOpen: boolean;
   editingPost: Post | null;
   messagesTarget: string | null;
+  questsToday: string[];
 }
 
 export interface SignUpInput {
@@ -130,6 +135,9 @@ interface AppContextValue extends AppState {
     location?: string;
     technologies: string[];
   }) => Promise<string | null>;
+  claimDaily: () => Promise<{ xp: number; streak: number; claimed: boolean }>;
+  boostPost: (id: string) => void;
+  canUseFeature: (feature: GatedFeature) => boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (input: SignUpInput) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -171,6 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     editPostOpen: false,
     editingPost: null,
     messagesTarget: null,
+    questsToday: [],
   });
 
   const applyRealtime = useCallback((payload: RealtimePayload) => {
@@ -257,6 +266,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return {
             ...s,
             users: s.users.map((u) => (u.id === user.id ? user : u)),
+            currentUser:
+              s.currentUser?.id === user.id ? user : s.currentUser,
           };
         }
       }
@@ -350,10 +361,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       let dbFollows: string[] | null = null;
       let dbInteractions: Awaited<ReturnType<typeof getInteractionsAction>> = null;
+      let dbProgress: Awaited<ReturnType<typeof getProgressAction>> | null = null;
       if (sessionUser) {
-        [dbFollows, dbInteractions] = await Promise.all([
+        [dbFollows, dbInteractions, dbProgress] = await Promise.all([
           getFollowsAction().catch(() => null),
           getInteractionsAction().catch(() => null),
+          getProgressAction().catch(() => null),
         ]);
       }
 
@@ -371,7 +384,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             n.forUserId === sessionUser?.id,
         ),
         users: data?.users ?? s.users,
-        currentUser: sessionUser,
+        currentUser: sessionUser
+          ? {
+              ...sessionUser,
+              xp: dbProgress?.xp ?? sessionUser.xp,
+              streak: dbProgress?.streak ?? sessionUser.streak,
+            }
+          : null,
+        questsToday: dbProgress?.questsToday ?? s.questsToday,
         following: dbFollows
           ? Array.from(new Set([...s.following, ...dbFollows]))
           : s.following,
@@ -489,6 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hashtags: extractHashtags(input.content),
         code: input.code,
         image: input.image,
+        video: input.video,
         createdAt: new Date().toISOString(),
         replies: 0,
         reposts: 0,
@@ -500,6 +521,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...s,
         posts: [optimistic, ...s.posts],
         composerOpen: false,
+        questsToday: s.questsToday.includes("post")
+          ? s.questsToday
+          : [...s.questsToday, "post"],
       }));
       void createPostAction({ ...input, id }).catch(() => {});
     },
@@ -549,6 +573,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         posts: s.posts.map((p) =>
           p.id === postId ? { ...p, replies: p.replies + 1 } : p,
         ),
+        questsToday: s.questsToday.includes("reply")
+          ? s.questsToday
+          : [...s.questsToday, "reply"],
       }));
       void addCommentAction(postId, content, id).catch(() => {});
     },
@@ -755,6 +782,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 content: input.content,
                 code: input.code,
                 image: input.image,
+                video: input.video,
                 hashtags: extractHashtags(input.content),
               }
             : p,
@@ -790,6 +818,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch {
         return "No se pudo actualizar el perfil. Intenta de nuevo.";
       }
+    },
+    [state.currentUser],
+  );
+
+  const canUseFeature = useCallback(
+    (feature: GatedFeature) => canUse(state.currentUser?.xp ?? 0, feature),
+    [state.currentUser?.xp],
+  );
+
+  const claimDaily = useCallback(async () => {
+    const result = await claimDailyAction().catch(() => ({
+      xp: 0,
+      streak: 0,
+      claimed: false,
+    }));
+    if (result.claimed) {
+      setState((s) => ({
+        ...s,
+        currentUser: s.currentUser
+          ? { ...s.currentUser, xp: result.xp, streak: result.streak }
+          : s.currentUser,
+        questsToday: s.questsToday.includes("daily")
+          ? s.questsToday
+          : [...s.questsToday, "daily"],
+      }));
+    }
+    return result;
+  }, []);
+
+  const boostPost = useCallback(
+    (id: string) => {
+      if (!state.currentUser) {
+        setState((s) => ({ ...s, loginOpen: true }));
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        posts: s.posts.map((p) => (p.id === id ? { ...p, featured: true } : p)),
+      }));
+      void boostPostAction(id).catch(() => {});
     },
     [state.currentUser],
   );
@@ -837,6 +905,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeEditPost,
       openConversation,
       updateProfile,
+      claimDaily,
+      boostPost,
+      canUseFeature,
       signIn,
       signUp,
       signOut,
@@ -870,6 +941,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeEditPost,
       openConversation,
       updateProfile,
+      claimDaily,
+      boostPost,
+      canUseFeature,
       signIn,
       signUp,
       signOut,

@@ -15,6 +15,8 @@ import {
   LogOutIcon,
   MailIcon,
   PenIcon,
+  RocketIcon,
+  TrophyIcon,
   UserIcon,
   UsersIcon,
 } from "./icons";
@@ -42,6 +44,8 @@ export function Sidebar() {
     { href: "/", label: "Inicio", icon: HomeIcon, match: "/" },
     { href: "/explore", label: "Explorar", icon: ExploreIcon, match: "/explore" },
     { href: "/memes", label: "Memes", icon: LaughIcon, match: "/memes" },
+    { href: "/misiones", label: "Misiones", icon: RocketIcon, match: "/misiones" },
+    { href: "/rangos", label: "Rangos", icon: TrophyIcon, match: "/rangos" },
     { href: "/notifications", label: "Notificaciones", icon: BellIcon, match: "/notifications", badge: unread },
     { href: "/messages", label: "Mensajes", icon: MailIcon, match: "/messages" },
     { href: "/communities", label: "Comunidades", icon: UsersIcon, match: "/communities" },

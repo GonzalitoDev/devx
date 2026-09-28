@@ -2,12 +2,15 @@
 
 import type { CreatePostInput, InitialData, User } from "@/lib/types";
 import {
+  boostPost,
+  claimDailyReward,
   createComment,
   createPost,
   deleteComment,
   deletePost,
   fetchInitialData,
   getFollowingIds,
+  getProgress,
   getUserCommunitySlugs,
   getUserPostIds,
   markAllNotificationsRead,
@@ -171,6 +174,29 @@ export async function setCommunityJoinAction(
 ): Promise<void> {
   const userId = await requireUserId();
   await setCommunityMembership(userId, slug, active);
+}
+
+export async function getProgressAction(): Promise<{
+  xp: number;
+  streak: number;
+  questsToday: string[];
+}> {
+  const userId = await requireUserId();
+  return getProgress(userId);
+}
+
+export async function claimDailyAction(): Promise<{
+  xp: number;
+  streak: number;
+  claimed: boolean;
+}> {
+  const userId = await requireUserId();
+  return claimDailyReward(userId);
+}
+
+export async function boostPostAction(id: string): Promise<void> {
+  const actorId = await requireUserId();
+  await boostPost(id, actorId);
 }
 
 export async function updateProfileAction(input: {

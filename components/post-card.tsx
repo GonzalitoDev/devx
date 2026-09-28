@@ -9,6 +9,7 @@ import type { Post } from "@/lib/types";
 import { formatCount, timeAgo } from "@/lib/format";
 import { Avatar } from "./avatar";
 import { CodeBlock } from "./code-block";
+import { RankBadge } from "./rank";
 import { RichText } from "./rich-text";
 import {
   BookmarkIcon,
@@ -18,7 +19,7 @@ import {
   RepeatIcon,
   SendIcon,
   TrashIcon,
-  VerifiedIcon,
+  ZapIcon,
 } from "./icons";
 
 const KIND_LABELS: Record<Post["kind"], string> = {
@@ -46,6 +47,8 @@ export function PostCard({ post }: { post: Post }) {
     deletePost,
     addComment,
     openEditPost,
+    boostPost,
+    canUseFeature,
     openLogin,
   } = useApp();
 
@@ -102,14 +105,12 @@ export function PostCard({ post }: { post: Post }) {
               className="flex items-center gap-1 font-semibold text-zinc-100 hover:underline"
             >
               {author.name}
-              {author.verified ? (
-                <VerifiedIcon className="h-4 w-4 text-sky-400" />
-              ) : null}
             </Link>
+            <RankBadge xp={author.xp ?? 0} />
             <span className="text-zinc-500">@{author.username}</span>
             <span className="text-zinc-600">·</span>
             <span className="text-zinc-500">{timeAgo(post.createdAt)}</span>
-            <span className="ml-auto flex items-center gap-1.5">
+            <span className="ml-auto flex items-center gap-0.5">
               {community ? (
                 <Link
                   href={`/community/${community.slug}`}
@@ -127,6 +128,19 @@ export function PostCard({ post }: { post: Post }) {
                   >
                     <PenIcon className="h-4 w-4" />
                   </button>
+                  {!post.featured ? (
+                    <button
+                      onClick={() => {
+                        if (canUseFeature("boost")) boostPost(post.id);
+                        else router.push("/rangos");
+                      }}
+                      className="rounded-full p-1 text-zinc-600 transition-colors hover:bg-amber-500/10 hover:text-amber-400"
+                      aria-label="Destacar publicación"
+                      title="Destacar (rango 3)"
+                    >
+                      <ZapIcon className="h-4 w-4" />
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => deletePost(post.id)}
                     className="rounded-full p-1 text-zinc-600 transition-colors hover:bg-red-500/10 hover:text-red-400"
@@ -138,6 +152,12 @@ export function PostCard({ post }: { post: Post }) {
               ) : null}
             </span>
           </div>
+
+          {post.featured ? (
+            <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-amber-400">
+              <ZapIcon className="h-3.5 w-3.5" /> Publicación destacada
+            </p>
+          ) : null}
 
           <button
             onClick={() => router.push(`/post/${post.id}`)}
@@ -165,6 +185,20 @@ export function PostCard({ post }: { post: Post }) {
                 alt=""
                 loading="lazy"
                 className="max-h-72 w-full rounded-xl border border-zinc-800 object-cover"
+              />
+            </button>
+          ) : null}
+
+          {post.video ? (
+            <button
+              onClick={() => router.push(`/post/${post.id}`)}
+              className="mt-3 block w-full cursor-pointer text-left"
+            >
+              <video
+                src={post.video}
+                controls
+                preload="metadata"
+                className="max-h-72 w-full rounded-xl border border-zinc-800 bg-black object-contain"
               />
             </button>
           ) : null}

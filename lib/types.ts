@@ -21,6 +21,9 @@ export interface User {
   likedPosts: string[];
   joined: string;
   verified?: boolean;
+  xp?: number;
+  streak?: number;
+  lastDaily?: string;
 }
 
 export interface CodeSnippet {
@@ -36,12 +39,14 @@ export interface Post {
   hashtags: string[];
   code?: CodeSnippet;
   image?: string;
+  video?: string;
   createdAt: string;
   replies: number;
   reposts: number;
   likes: number;
   views: number;
   communitySlug?: string;
+  featured?: boolean;
 }
 
 export interface Comment {
@@ -118,6 +123,7 @@ export interface CreatePostInput {
   content: string;
   code?: CodeSnippet;
   image?: string;
+  video?: string;
   communitySlug?: string;
 }
 

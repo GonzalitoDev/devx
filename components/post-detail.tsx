@@ -19,6 +19,7 @@ import {
   SendIcon,
   TrashIcon,
   VerifiedIcon,
+  ZapIcon,
 } from "./icons";
 
 export function PostDetail({ postId }: { postId: string }) {
@@ -147,6 +148,23 @@ export function PostDetail({ postId }: { postId: string }) {
               className="max-h-[420px] w-full rounded-xl border border-zinc-800 object-cover"
             />
           </div>
+        ) : null}
+
+        {post.video ? (
+          <div className="mt-4">
+            <video
+              src={post.video}
+              controls
+              preload="metadata"
+              className="max-h-[420px] w-full rounded-xl border border-zinc-800 bg-black object-contain"
+            />
+          </div>
+        ) : null}
+
+        {post.featured ? (
+          <p className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-amber-400">
+            <ZapIcon className="h-4 w-4" /> Publicación destacada
+          </p>
         ) : null}
 
         {post.hashtags.length > 0 || community ? (

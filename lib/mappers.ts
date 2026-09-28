@@ -16,12 +16,14 @@ export interface PostRow {
   hashtags: string[];
   code: CodeSnippet | null;
   image: string | null;
+  video: string | null;
   community_slug: string | null;
   created_at: string;
   replies: number;
   reposts: number;
   likes: number;
   views: number;
+  featured?: boolean;
 }
 
 export interface CommentRow {
@@ -68,6 +70,9 @@ export interface ProfileRow {
   liked_posts: string[];
   joined: string;
   verified: boolean;
+  xp?: number;
+  streak?: number;
+  last_daily?: string | null;
 }
 
 export function toUser(row: ProfileRow): User {
@@ -85,6 +90,9 @@ export function toUser(row: ProfileRow): User {
     likedPosts: row.liked_posts ?? [],
     joined: row.joined,
     verified: row.verified,
+    xp: row.xp ?? 0,
+    streak: row.streak ?? 0,
+    lastDaily: row.last_daily ?? undefined,
   };
 }
 
@@ -103,6 +111,9 @@ export function toProfileRow(user: User): ProfileRow {
     liked_posts: user.likedPosts,
     joined: user.joined,
     verified: user.verified ?? false,
+    xp: user.xp ?? 0,
+    streak: user.streak ?? 0,
+    last_daily: user.lastDaily ?? null,
   };
 }
 
@@ -115,12 +126,14 @@ export function toPost(row: PostRow): Post {
     hashtags: row.hashtags ?? [],
     code: row.code ?? undefined,
     image: row.image ?? undefined,
+    video: row.video ?? undefined,
     createdAt: row.created_at,
     replies: row.replies,
     reposts: row.reposts,
     likes: row.likes,
     views: row.views,
     communitySlug: row.community_slug ?? undefined,
+    featured: row.featured ?? false,
   };
 }
 
@@ -171,8 +184,10 @@ export function toPostRow(
     hashtags: post.hashtags,
     code: post.code ?? null,
     image: post.image ?? null,
+    video: post.video ?? null,
     community_slug: post.communitySlug ?? null,
     created_at: post.createdAt,
+    featured: post.featured ?? false,
   };
 }
 

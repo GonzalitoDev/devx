@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp, guestUser } from "@/lib/store";
+import { requiredRankFor } from "@/lib/ranks";
 import { Avatar } from "./avatar";
-import { CodeIcon, ImageIcon, SendIcon, XIcon } from "./icons";
+import { CodeIcon, ImageIcon, LockIcon, SendIcon, VideoIcon, XIcon } from "./icons";
 import { communities } from "@/lib/data";
 
 const LANGUAGES = [
@@ -22,14 +24,19 @@ const LANGUAGES = [
 const MAX_LENGTH = 280;
 
 export function PostForm({ variant = "inline" }: { variant?: "inline" | "modal" }) {
-  const { currentUser, createPost, openLogin } = useApp();
+  const { currentUser, createPost, openLogin, canUseFeature } = useApp();
+  const router = useRouter();
 
   const [content, setContent] = useState("");
   const [showCode, setShowCode] = useState(false);
   const [language, setLanguage] = useState("typescript");
   const [code, setCode] = useState("");
   const [image, setImage] = useState("");
+  const [video, setVideo] = useState("");
   const [communitySlug, setCommunitySlug] = useState<string>("");
+
+  const canImages = canUseFeature("images");
+  const canVideo = canUseFeature("video");
 
   const canPublish = content.trim().length > 0;
 
@@ -43,12 +50,14 @@ export function PostForm({ variant = "inline" }: { variant?: "inline" | "modal" 
       content: content.trim(),
       code: showCode && code.trim() ? { language, code: code.trim() } : undefined,
       image: image.trim() || undefined,
+      video: video.trim() || undefined,
       communitySlug: communitySlug || undefined,
     });
     setContent("");
     setShowCode(false);
     setCode("");
     setImage("");
+    setVideo("");
     setCommunitySlug("");
   };
 
@@ -109,6 +118,24 @@ export function PostForm({ variant = "inline" }: { variant?: "inline" | "modal" 
           </div>
         ) : null}
 
+        {video ? (
+          <div className="relative overflow-hidden rounded-xl border border-zinc-800">
+            <video
+              src={video}
+              controls
+              preload="metadata"
+              className="max-h-64 w-full bg-black object-contain"
+            />
+            <button
+              onClick={() => setVideo("")}
+              className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-zinc-300 hover:text-white"
+              aria-label="Quitar video"
+            >
+              <XIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between border-t border-zinc-900 pt-2">
           <div className="flex items-center gap-1">
             <button
@@ -122,14 +149,56 @@ export function PostForm({ variant = "inline" }: { variant?: "inline" | "modal" 
               <CodeIcon className="h-4 w-4" /> Código
             </button>
             <button
-              onClick={() => setImage("https://picsum.photos/seed/devx-post/800/450")}
+              onClick={
+                canImages
+                  ? () => setImage("https://picsum.photos/seed/devx-post/800/450")
+                  : () => router.push("/rangos")
+              }
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
                 image
                   ? "bg-sky-500/10 text-sky-400"
-                  : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                  : canImages
+                    ? "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                    : "text-zinc-600 hover:text-zinc-400"
               }`}
+              title={
+                canImages
+                  ? "Añadir imagen"
+                  : `Requiere rango ${requiredRankFor("images").level} (${requiredRankFor("images").name})`
+              }
             >
-              <ImageIcon className="h-4 w-4" /> Imagen
+              {canImages ? (
+                <ImageIcon className="h-4 w-4" />
+              ) : (
+                <LockIcon className="h-4 w-4" />
+              )}
+              Imagen
+            </button>
+            <button
+              onClick={
+                canVideo
+                  ? () => setVideo("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                  : () => router.push("/rangos")
+              }
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
+                video
+                  ? "bg-sky-500/10 text-sky-400"
+                  : canVideo
+                    ? "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300"
+                    : "text-zinc-600 hover:text-zinc-400"
+              }`}
+              title={
+                canVideo
+                  ? "Añadir video"
+                  : `Requiere rango ${requiredRankFor("video").level} (${requiredRankFor("video").name})`
+              }
+            >
+              {canVideo ? (
+                <VideoIcon className="h-4 w-4" />
+              ) : (
+                <LockIcon className="h-4 w-4" />
+              )}
+              Video
             </button>
             <select
               value={communitySlug}

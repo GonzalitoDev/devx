@@ -1,6 +1,7 @@
 import "server-only";
 import type { Comment, CreatePostInput, InitialData, Message, Notification, Post, User } from "./types";
 import { getAdmin } from "./supabase";
+import { canUse, XP_ACTIONS } from "./ranks";
 import {
   comments as mockComments,
   messages as mockMessages,
@@ -116,6 +117,13 @@ export async function fetchInitialData(): Promise<InitialData> {
 
 export async function createPost(input: CreatePostInput, authorId: string): Promise<Post> {
   const admin = ensureAdmin();
+  const xp = await getXp(authorId);
+  if (input.image && !canUse(xp, "images")) {
+    throw new Error("Subir imágenes requiere rango Aprendiz (2)");
+  }
+  if (input.video && !canUse(xp, "video")) {
+    throw new Error("Subir videos requiere rango Mid (4)");
+  }
   const id = input.id ?? `p-${Date.now()}`;
   const post: Post = {
     id,
@@ -125,6 +133,7 @@ export async function createPost(input: CreatePostInput, authorId: string): Prom
     hashtags: extractHashtags(input.content),
     code: input.code,
     image: input.image,
+    video: input.video,
     createdAt: new Date().toISOString(),
     replies: 0,
     reposts: 0,
@@ -134,6 +143,8 @@ export async function createPost(input: CreatePostInput, authorId: string): Prom
   };
   const { data, error } = await admin.from("devx_posts").insert(toPostRow(post)).select().single();
   if (error) throw error;
+  await grantXp(authorId, XP_ACTIONS.post);
+  await markQuestDone(authorId, "post");
   return toPost(data as Parameters<typeof toPost>[0]);
 }
 
@@ -164,6 +175,9 @@ export async function createComment(
 
   const { data: post } = await admin.from("devx_posts").select("replies").eq("id", postId).single();
   await admin.from("devx_posts").update({ replies: (post?.replies ?? 0) + 1 }).eq("id", postId);
+
+  await grantXp(authorId, XP_ACTIONS.reply);
+  await markQuestDone(authorId, "reply");
 
   return toComment(data as Parameters<typeof toComment>[0]);
 }
@@ -225,6 +239,142 @@ export async function createProfile(profile: User): Promise<User> {
   const { data, error } = await admin.from("devx_profiles").upsert(toProfileRow(profile)).select().single();
   if (error) throw error;
   return toUser(data as Parameters<typeof toUser>[0]);
+}
+
+async function getXp(userId: string): Promise<number> {
+  const admin = ensureAdmin();
+  try {
+    const { data } = await admin
+      .from("devx_profiles")
+      .select("xp")
+      .eq("id", userId)
+      .maybeSingle();
+    return (data as { xp?: number } | null)?.xp ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function grantXp(userId: string, amount: number): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    const current = await getXp(userId);
+    await admin
+      .from("devx_profiles")
+      .update({ xp: Math.max(0, current + amount) })
+      .eq("id", userId);
+  } catch {
+    // best effort
+  }
+}
+
+export async function markQuestDone(
+  userId: string,
+  questId: string,
+): Promise<void> {
+  const admin = ensureAdmin();
+  try {
+    await admin.from("devx_quest_logs").upsert(
+      { user_id: userId, quest_id: questId, day: new Date().toISOString().slice(0, 10) },
+      { onConflict: "user_id, quest_id, day", ignoreDuplicates: true },
+    );
+  } catch {
+    // tabla aún no existe
+  }
+}
+
+export async function getQuestsDoneToday(userId: string): Promise<string[]> {
+  const admin = ensureAdmin();
+  try {
+    const { data } = await admin
+      .from("devx_quest_logs")
+      .select("quest_id")
+      .eq("user_id", userId)
+      .eq("day", new Date().toISOString().slice(0, 10));
+    return (data ?? []).map((r) => (r as { quest_id: string }).quest_id);
+  } catch {
+    return [];
+  }
+}
+
+export async function claimDailyReward(userId: string): Promise<{
+  xp: number;
+  streak: number;
+  claimed: boolean;
+}> {
+  const admin = ensureAdmin();
+  try {
+    const { data: profile } = await admin
+      .from("devx_profiles")
+      .select("xp, streak, last_daily")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) return { xp: 0, streak: 0, claimed: false };
+    const p = profile as {
+      xp: number;
+      streak: number;
+      last_daily: string | null;
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    if (p.last_daily && p.last_daily.slice(0, 10) === today) {
+      return { xp: p.xp, streak: p.streak, claimed: false };
+    }
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const streak = p.last_daily && p.last_daily.slice(0, 10) === yesterday ? p.streak + 1 : 1;
+    const xp = p.xp + XP_ACTIONS.daily;
+    await admin
+      .from("devx_profiles")
+      .update({ xp, streak, last_daily: new Date().toISOString() })
+      .eq("id", userId);
+    await markQuestDone(userId, "daily");
+    return { xp, streak, claimed: true };
+  } catch {
+    return { xp: 0, streak: 0, claimed: false };
+  }
+}
+
+export async function getProgress(userId: string): Promise<{
+  xp: number;
+  streak: number;
+  questsToday: string[];
+}> {
+  try {
+    const admin = ensureAdmin();
+    const { data } = await admin
+      .from("devx_profiles")
+      .select("xp, streak")
+      .eq("id", userId)
+      .maybeSingle();
+    const p = (data as { xp?: number; streak?: number } | null) ?? {};
+    const questsToday = await getQuestsDoneToday(userId);
+    return {
+      xp: p.xp ?? 0,
+      streak: p.streak ?? 0,
+      questsToday,
+    };
+  } catch {
+    return { xp: 0, streak: 0, questsToday: [] };
+  }
+}
+
+export async function boostPost(id: string, actorId: string): Promise<void> {
+  const admin = ensureAdmin();
+  const xp = await getXp(actorId);
+  if (!canUse(xp, "boost")) throw new Error("Requiere rango Junior (3)");
+  const { data: existing } = await admin
+    .from("devx_posts")
+    .select("author_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) throw new Error("Publicación no encontrada");
+  if ((existing as { author_id: string }).author_id !== actorId) {
+    throw new Error("Solo podés destacar publicaciones propias");
+  }
+  const { error } = await admin
+    .from("devx_posts")
+    .update({ featured: true })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function updateProfile(
@@ -399,6 +549,9 @@ export async function notifyOnReaction(
       read: false,
       forUserId: authorId,
     });
+    if (type === "like") {
+      await grantXp(authorId, XP_ACTIONS.likeReceived);
+    }
   } catch {
     // la columna for_user_id aún no existe: no romper la acción
   }

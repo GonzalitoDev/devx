@@ -8,6 +8,7 @@ import { projects } from "@/lib/data";
 import type { Comment, Post, User } from "@/lib/types";
 import { formatCount, joinedDate, timeAgo } from "@/lib/format";
 import { Avatar, avatarGradient } from "./avatar";
+import { RankBadge, RankProgress } from "./rank";
 import { EmptyState } from "./empty-state";
 import { PostCard } from "./post-card";
 import { RichText } from "./rich-text";
@@ -140,6 +141,14 @@ export function ProfileView({ user }: { user: User }) {
             ) : null}
           </h1>
           <p className="text-sm text-zinc-500">@{user.username}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <RankBadge xp={user.xp ?? 0} size="md" />
+            {user.streak ? (
+              <span className="text-xs text-orange-400">
+                🔥 Racha {user.streak} días
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <p className="mt-3 text-[15px] text-zinc-200">{user.bio}</p>
@@ -186,7 +195,14 @@ export function ProfileView({ user }: { user: User }) {
             </span>{" "}
             Siguiendo
           </span>
+          <span className="text-zinc-500">
+            <span className="font-bold text-zinc-100">{user.xp ?? 0}</span> XP
+          </span>
         </div>
+
+        {isOwn ? (
+          <RankProgress xp={user.xp ?? 0} className="mt-4" />
+        ) : null}
 
         {user.technologies.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">

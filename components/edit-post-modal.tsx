@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApp } from "@/lib/store";
-import { CodeIcon, ImageIcon, XIcon } from "./icons";
+import { CodeIcon, ImageIcon, VideoIcon, XIcon } from "./icons";
 
 const LANGUAGES = [
   "typescript",
@@ -27,6 +27,7 @@ export function EditPostModal() {
   );
   const [code, setCode] = useState(editingPost?.code?.code ?? "");
   const [image, setImage] = useState(editingPost?.image ?? "");
+  const [video, setVideo] = useState(editingPost?.video ?? "");
 
   if (!editingPost) return null;
 
@@ -36,6 +37,7 @@ export function EditPostModal() {
       content: content.trim(),
       code: showCode && code.trim() ? { language, code: code.trim() } : undefined,
       image: image.trim() || undefined,
+      video: video.trim() || undefined,
     });
   };
 
@@ -131,6 +133,31 @@ export function EditPostModal() {
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
             >
               <ImageIcon className="h-4 w-4" /> Añadir imagen
+            </button>
+          )}
+
+          {video ? (
+            <div className="relative overflow-hidden rounded-xl border border-zinc-800">
+              <video
+                src={video}
+                controls
+                preload="metadata"
+                className="max-h-64 w-full bg-black object-contain"
+              />
+              <button
+                onClick={() => setVideo("")}
+                className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-zinc-300 hover:text-white"
+                aria-label="Quitar video"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setVideo("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
+            >
+              <VideoIcon className="h-4 w-4" /> Añadir video
             </button>
           )}
 

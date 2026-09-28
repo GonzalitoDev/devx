@@ -6,7 +6,7 @@ export function FeedTabs() {
   const { feedTab, setFeedTab } = useApp();
 
   const tabs = [
-    { id: "foryou" as const, label: "Para ti" },
+    { id: "foryou" as const, label: "Comunidad" },
     { id: "following" as const, label: "Siguiendo" },
   ];
 

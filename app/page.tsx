@@ -1,14 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { useApp } from "@/lib/store";
+import { QUESTS } from "@/lib/ranks";
 import { Feed } from "@/components/feed";
 import { FeedTabs } from "@/components/feed-tabs";
 import { PostForm } from "@/components/post-form";
-import { CodeIcon } from "@/components/icons";
+import { RankBadge, RankProgress } from "@/components/rank";
+import { CheckIcon, CodeIcon } from "@/components/icons";
 
 export default function HomePage() {
-  const { posts, following, currentUser, feedTab } = useApp();
+  const { posts, following, currentUser, feedTab, questsToday } = useApp();
 
   const visiblePosts = useMemo(() => {
     const sorted = [...posts].sort(
@@ -35,6 +38,43 @@ export default function HomePage() {
         </div>
         <FeedTabs />
       </div>
+
+      {currentUser ? (
+        <div className="border-b border-zinc-900 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-zinc-500">
+                Hola, <span className="font-semibold text-zinc-100">{currentUser.name}</span>
+              </p>
+              <RankProgress xp={currentUser.xp ?? 0} className="mt-2" />
+            </div>
+            <RankBadge xp={currentUser.xp ?? 0} size="md" />
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            {QUESTS.map((quest) => {
+              const done = questsToday.includes(quest.id);
+              return (
+                <Link
+                  key={quest.id}
+                  href="/misiones"
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                    done
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                      : "border-zinc-800 text-zinc-400 hover:border-zinc-600"
+                  }`}
+                >
+                  {done ? (
+                    <CheckIcon className="h-3.5 w-3.5" />
+                  ) : (
+                    <span className="h-3.5 w-3.5 rounded-full border border-zinc-600" />
+                  )}
+                  {quest.name.split(" ")[0]}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <div className="hidden border-b border-zinc-900 lg:block">
         <PostForm />
