@@ -74,15 +74,22 @@ export async function requireUserId(): Promise<string> {
   return user.id;
 }
 
-export async function signIn(email: string, password: string): Promise<string | null> {
+export interface AuthResult {
+  error: string | null;
+  user: User | null;
+}
+
+export async function signIn(email: string, password: string): Promise<AuthResult> {
   const admin = getAdmin();
-  if (!admin) return "Error de configuración del servidor";
+  if (!admin) return { error: "Error de configuración del servidor", user: null };
 
   const { data, error } = await admin.auth.signInWithPassword({
     email: email.trim(),
     password,
   });
-  if (error || !data.session) return "Email o contraseña incorrectos";
+  if (error || !data.session) {
+    return { error: "Email o contraseña incorrectos", user: null };
+  }
 
   const store = await cookies();
   store.set(ACCESS_COOKIE, data.session.access_token, cookieOptions(WEEK));
@@ -91,7 +98,16 @@ export async function signIn(email: string, password: string): Promise<string | 
     data.session.refresh_token,
     cookieOptions(REFRESH_MAX_AGE),
   );
-  return null;
+
+  // Devuelve el perfil directamente para que la UI se actualice sin depender
+  // del round-trip del cookie (más robusto tras el login).
+  let user: User | null = null;
+  try {
+    user = await getProfileByUserId(data.user.id);
+  } catch {
+    // sin perfil todavía: el usuario queda logueado pero sin perfil
+  }
+  return { error: null, user };
 }
 
 export async function signUp(input: {
@@ -99,9 +115,9 @@ export async function signUp(input: {
   password: string;
   name: string;
   username: string;
-}): Promise<string | null> {
+}): Promise<AuthResult> {
   const admin = getAdmin();
-  if (!admin) return "Error de configuración del servidor";
+  if (!admin) return { error: "Error de configuración del servidor", user: null };
 
   const name = input.name.trim();
   const username = input.username
@@ -109,13 +125,20 @@ export async function signUp(input: {
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "");
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    return "El usuario debe tener entre 3 y 20 caracteres (letras, números o _).";
+    return {
+      error: "El usuario debe tener entre 3 y 20 caracteres (letras, números o _).",
+      user: null,
+    };
   }
-  if (name.length < 2) return "Escribe tu nombre.";
-  if (input.password.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+  if (name.length < 2) return { error: "Escribe tu nombre.", user: null };
+  if (input.password.length < 6) {
+    return { error: "La contraseña debe tener al menos 6 caracteres.", user: null };
+  }
 
   try {
-    if (await usernameExists(username)) return "Ese nombre de usuario ya está en uso.";
+    if (await usernameExists(username)) {
+      return { error: "Ese nombre de usuario ya está en uso.", user: null };
+    }
   } catch {
     // si la tabla aún no existe, se detectará en createProfile
   }
@@ -129,11 +152,11 @@ export async function signUp(input: {
   if (createError) {
     const msg = createError.message.toLowerCase();
     if (msg.includes("already") || msg.includes("exists")) {
-      return "Ese email ya está registrado.";
+      return { error: "Ese email ya está registrado.", user: null };
     }
-    return "No se pudo crear la cuenta.";
+    return { error: "No se pudo crear la cuenta.", user: null };
   }
-  if (!created.user) return "No se pudo crear la cuenta.";
+  if (!created.user) return { error: "No se pudo crear la cuenta.", user: null };
 
   const profile: User = {
     id: created.user.id,
@@ -149,10 +172,47 @@ export async function signUp(input: {
   try {
     await createProfile(profile);
   } catch {
-    return "Base de datos no configurada. Ejecuta las migraciones en el SQL Editor.";
+    return {
+      error: "Base de datos no configurada. Ejecuta las migraciones en el SQL Editor.",
+      user: null,
+    };
   }
 
   return signIn(input.email.trim(), input.password);
+}
+
+export async function sendPasswordReset(email: string): Promise<string | null> {
+  const admin = getAdmin();
+  if (!admin) return "Error de configuración del servidor";
+  const appUrl = process.env.APP_URL ?? "https://devx-sandy.vercel.app";
+  const { error } = await admin.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${appUrl}/?recovery=1`,
+  });
+  if (error) return "No se pudo enviar el correo. Verificá que el email exista.";
+  return null;
+}
+
+export async function setNewPassword(
+  token: string,
+  password: string,
+): Promise<string | null> {
+  const admin = getAdmin();
+  if (!admin) return "Error de configuración del servidor";
+  if (password.length < 6) {
+    return "La contraseña debe tener al menos 6 caracteres.";
+  }
+  try {
+    const { error: setError } = await admin.auth.setSession({
+      access_token: token,
+      refresh_token: "",
+    });
+    if (setError) return "El enlace no es válido o expiró.";
+    const { error: updError } = await admin.auth.updateUser({ password });
+    if (updError) return "No se pudo actualizar la contraseña.";
+    return null;
+  } catch {
+    return "No se pudo actualizar la contraseña.";
+  }
 }
 
 export async function signOut(): Promise<void> {

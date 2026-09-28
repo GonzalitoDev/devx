@@ -11,6 +11,7 @@ import {
   DownloadIcon,
   ExploreIcon,
   HomeIcon,
+  LaughIcon,
   LogOutIcon,
   MailIcon,
   PenIcon,
@@ -40,6 +41,7 @@ export function Sidebar() {
   const items = [
     { href: "/", label: "Inicio", icon: HomeIcon, match: "/" },
     { href: "/explore", label: "Explorar", icon: ExploreIcon, match: "/explore" },
+    { href: "/memes", label: "Memes", icon: LaughIcon, match: "/memes" },
     { href: "/notifications", label: "Notificaciones", icon: BellIcon, match: "/notifications", badge: unread },
     { href: "/messages", label: "Mensajes", icon: MailIcon, match: "/messages" },
     { href: "/communities", label: "Comunidades", icon: UsersIcon, match: "/communities" },
@@ -140,6 +142,7 @@ export function MobileNav() {
   const items = [
     { href: "/", label: "Inicio", icon: HomeIcon, match: "/" },
     { href: "/explore", label: "Explorar", icon: ExploreIcon, match: "/explore" },
+    { href: "/memes", label: "Memes", icon: LaughIcon, match: "/memes" },
     { href: "/notifications", label: "Notis", icon: BellIcon, match: "/notifications", badge: unread },
     { href: "/messages", label: "Mensajes", icon: MailIcon, match: "/messages" },
     { href: "/profile", label: "Perfil", icon: UserIcon, match: "/profile" },

@@ -128,3 +128,29 @@ export interface InitialData {
   notifications: Notification[];
   users: User[];
 }
+
+export interface ScrapedMeme {
+  id: string;
+  title: string;
+  image: string;
+  url: string;
+  source: string;
+}
+
+export interface ScrapedVideo {
+  id: string;
+  title: string;
+  videoUrl: string;
+  poster?: string;
+  url: string;
+  source: string;
+}
+
+export interface ScrapedResponse {
+  memes: ScrapedMeme[];
+  videos: ScrapedVideo[];
+  fetchedAt: string;
+  cached: boolean;
+  fallback?: boolean;
+  error?: string;
+}

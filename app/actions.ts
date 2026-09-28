@@ -24,9 +24,12 @@ import {
 import {
   getSessionUser,
   requireUserId,
+  sendPasswordReset,
+  setNewPassword,
   signIn as signInWithPassword,
   signOut as signOutSession,
   signUp as signUpUser,
+  type AuthResult,
 } from "@/lib/auth";
 
 export async function getInitialData(): Promise<InitialData> {
@@ -40,7 +43,7 @@ export async function getSession(): Promise<User | null> {
 export async function signInAction(
   email: string,
   password: string,
-): Promise<string | null> {
+): Promise<AuthResult> {
   return signInWithPassword(email, password);
 }
 
@@ -49,8 +52,21 @@ export async function signUpAction(input: {
   password: string;
   name: string;
   username: string;
-}): Promise<string | null> {
+}): Promise<AuthResult> {
   return signUpUser(input);
+}
+
+export async function resetPasswordAction(
+  email: string,
+): Promise<string | null> {
+  return sendPasswordReset(email);
+}
+
+export async function setNewPasswordAction(
+  token: string,
+  password: string,
+): Promise<string | null> {
+  return setNewPassword(token, password);
 }
 
 export async function signOutAction(): Promise<void> {

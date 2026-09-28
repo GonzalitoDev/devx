@@ -454,34 +454,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, loginOpen: false }));
   }, []);
 
-  const refreshAuth = useCallback(async () => {
-    try {
-      const user = await getSession();
-      setState((s) => ({ ...s, currentUser: user, loginOpen: false }));
-    } catch {
-      // sin sesión
-    }
+  const signIn = useCallback(async (email: string, password: string) => {
+    const result = await signInAction(email, password);
+    if (result.error) return result.error;
+    setState((s) => ({ ...s, currentUser: result.user, loginOpen: false }));
+    return null;
   }, []);
 
-  const signIn = useCallback(
-    async (email: string, password: string) => {
-      const error = await signInAction(email, password);
-      if (error) return error;
-      await refreshAuth();
-      return null;
-    },
-    [refreshAuth],
-  );
-
-  const signUp = useCallback(
-    async (input: SignUpInput) => {
-      const error = await signUpAction(input);
-      if (error) return error;
-      await refreshAuth();
-      return null;
-    },
-    [refreshAuth],
-  );
+  const signUp = useCallback(async (input: SignUpInput) => {
+    const result = await signUpAction(input);
+    if (result.error) return result.error;
+    setState((s) => ({ ...s, currentUser: result.user, loginOpen: false }));
+    return null;
+  }, []);
 
   const signOut = useCallback(async () => {
     await signOutAction().catch(() => {});
@@ -799,14 +784,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       try {
         await updateProfileAction(input);
-        await refreshAuth();
-        setState((s) => ({ ...s, editProfileOpen: false }));
+        const user = await getSession();
+        setState((s) => ({ ...s, currentUser: user, editProfileOpen: false }));
         return null;
       } catch {
         return "No se pudo actualizar el perfil. Intenta de nuevo.";
       }
     },
-    [state.currentUser, refreshAuth],
+    [state.currentUser],
   );
 
   const resetData = useCallback(() => {
