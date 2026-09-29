@@ -164,6 +164,12 @@ export const QUESTS: Quest[] = [
     xp: 5,
   },
   {
+    id: "practice",
+    name: "Resolvé un reto",
+    description: "Completá un ejercicio en la zona de práctica.",
+    xp: 10,
+  },
+  {
     id: "daily",
     name: "Recompensa diaria",
     description: "Entrá a DevX hoy y mantené tu racha.",
@@ -175,5 +181,6 @@ export const XP_ACTIONS = {
   post: 10,
   reply: 5,
   likeReceived: 1,
+  practice: 10,
   daily: 3,
 };

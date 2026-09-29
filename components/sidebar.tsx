@@ -16,6 +16,7 @@ import {
   MailIcon,
   PenIcon,
   RocketIcon,
+  TerminalIcon,
   TrophyIcon,
   UserIcon,
   UsersIcon,
@@ -44,6 +45,7 @@ export function Sidebar() {
     { href: "/", label: "Inicio", icon: HomeIcon, match: "/" },
     { href: "/explore", label: "Explorar", icon: ExploreIcon, match: "/explore" },
     { href: "/memes", label: "Memes", icon: LaughIcon, match: "/memes" },
+    { href: "/practice", label: "Práctica", icon: TerminalIcon, match: "/practice" },
     { href: "/misiones", label: "Misiones", icon: RocketIcon, match: "/misiones" },
     { href: "/rangos", label: "Rangos", icon: TrophyIcon, match: "/rangos" },
     { href: "/notifications", label: "Notificaciones", icon: BellIcon, match: "/notifications", badge: unread },
@@ -147,6 +149,7 @@ export function MobileNav() {
     { href: "/", label: "Inicio", icon: HomeIcon, match: "/" },
     { href: "/explore", label: "Explorar", icon: ExploreIcon, match: "/explore" },
     { href: "/memes", label: "Memes", icon: LaughIcon, match: "/memes" },
+    { href: "/practice", label: "Práctica", icon: TerminalIcon, match: "/practice" },
     { href: "/notifications", label: "Notis", icon: BellIcon, match: "/notifications", badge: unread },
     { href: "/messages", label: "Mensajes", icon: MailIcon, match: "/messages" },
     { href: "/profile", label: "Perfil", icon: UserIcon, match: "/profile" },
@@ -154,14 +157,14 @@ export function MobileNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-900 bg-black/95 backdrop-blur lg:hidden">
-      <div className="flex items-center justify-around py-2">
+      <div className="no-scrollbar flex items-center gap-1 overflow-x-auto px-2 py-2">
         {items.map((item) => {
           const active = pathname === item.match;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] ${
+              className={`relative flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] ${
                 active ? "font-semibold text-sky-400" : "text-zinc-500"
               }`}
             >
@@ -180,7 +183,7 @@ export function MobileNav() {
         <a
           href="/DevX.apk"
           download
-          className="flex flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] text-zinc-500"
+          className="flex shrink-0 flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] text-zinc-500"
           aria-label="Descargar APK"
         >
           <DownloadIcon className="h-6 w-6" />

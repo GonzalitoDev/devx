@@ -470,3 +470,11 @@ export function TrophyIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <polygon points="6 3 20 12 6 21 6 3" />
+    </Svg>
+  );
+}

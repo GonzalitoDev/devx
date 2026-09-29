@@ -15,6 +15,7 @@ import {
   getUserPostIds,
   markAllNotificationsRead,
   notifyOnReaction,
+  resolveChallenge,
   sendMessage,
   setCommunityMembership,
   setFollow,
@@ -197,6 +198,14 @@ export async function claimDailyAction(): Promise<{
 export async function boostPostAction(id: string): Promise<void> {
   const actorId = await requireUserId();
   await boostPost(id, actorId);
+}
+
+export async function resolveChallengeAction(): Promise<{
+  xp: number;
+  already: boolean;
+}> {
+  const userId = await requireUserId();
+  return resolveChallenge(userId);
 }
 
 export async function updateProfileAction(input: {

@@ -377,6 +377,20 @@ export async function boostPost(id: string, actorId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function resolveChallenge(
+  userId: string,
+): Promise<{ xp: number; already: boolean }> {
+  try {
+    const done = await getQuestsDoneToday(userId);
+    if (done.includes("practice")) return { xp: 0, already: true };
+    await grantXp(userId, XP_ACTIONS.practice);
+    await markQuestDone(userId, "practice");
+    return { xp: XP_ACTIONS.practice, already: false };
+  } catch {
+    return { xp: 0, already: false };
+  }
+}
+
 export async function updateProfile(
   id: string,
   input: {

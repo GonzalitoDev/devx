@@ -52,6 +52,7 @@ import {
   getProgressAction,
   getSession,
   markAllNotificationsReadAction,
+  resolveChallengeAction,
   sendMessageAction,
   setBookmarkAction,
   setCommunityJoinAction,
@@ -137,6 +138,7 @@ interface AppContextValue extends AppState {
   }) => Promise<string | null>;
   claimDaily: () => Promise<{ xp: number; streak: number; claimed: boolean }>;
   boostPost: (id: string) => void;
+  resolveChallenge: () => Promise<{ xp: number; already: boolean }>;
   canUseFeature: (feature: GatedFeature) => boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (input: SignUpInput) => Promise<string | null>;
@@ -862,6 +864,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [state.currentUser],
   );
 
+  const resolveChallenge = useCallback(async () => {
+    const result = await resolveChallengeAction().catch(() => ({
+      xp: 0,
+      already: false,
+    }));
+    if (result.xp > 0) {
+      setState((s) => ({
+        ...s,
+        currentUser: s.currentUser
+          ? { ...s.currentUser, xp: (s.currentUser.xp ?? 0) + result.xp }
+          : s.currentUser,
+        questsToday: s.questsToday.includes("practice")
+          ? s.questsToday
+          : [...s.questsToday, "practice"],
+      }));
+    }
+    return result;
+  }, []);
+
   const resetData = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setState((s) => ({
@@ -907,6 +928,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateProfile,
       claimDaily,
       boostPost,
+      resolveChallenge,
       canUseFeature,
       signIn,
       signUp,
@@ -943,6 +965,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateProfile,
       claimDaily,
       boostPost,
+      resolveChallenge,
       canUseFeature,
       signIn,
       signUp,
