@@ -9,6 +9,7 @@ import { ComposerModal } from "./composer-modal";
 import { LoginModal } from "./login-modal";
 import { EditProfileModal } from "./edit-profile-modal";
 import { EditPostModal } from "./edit-post-modal";
+import { Assistant } from "./assistant";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -41,6 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav />
+      <Assistant />
       <ComposerModal />
       <LoginModal />
       {editProfileOpen ? <EditProfileModal /> : null}
